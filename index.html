@@ -155,8 +155,13 @@
 
     function getDisplayText(label) {
       if (!simpleMode) return label;
-      const dash = label.indexOf(' - ');
-      if (dash !== -1) return label.slice(0, dash).trim();
+      const separators = [' – ', ' - ', ' — ', ': '];
+      let first = label.length;
+      for (const sep of separators) {
+        const i = label.indexOf(sep);
+        if (i !== -1 && i < first) first = i;
+      }
+      if (first < label.length) return label.slice(0, first).trim();
       return label;
     }
 
