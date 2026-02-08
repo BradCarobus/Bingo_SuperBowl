@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bingo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 2rem;
+      letter-spacing: 0.2em;
+    }
+    .load-hint {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 1rem;
+    }
+    .load-hint button {
+      background: #333;
+      color: #ccc;
+      border: 1px solid #555;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .load-hint button:hover { background: #444; }
+    .board {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 420px;
+      width: 100%;
+    }
+    .board-header {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 4px;
+      aspect-ratio: 1;
+    }
+    .board-header .cell {
+      font-weight: bold;
+      font-size: 1.5rem;
+      background: #16213e;
+      padding: 0.5rem;
+    }
+    .cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px;
+      background: #0f3460;
+      border: 2px solid #e94560;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: clamp(0.7rem, 2.2vw, 0.9rem);
+      transition: background 0.15s, transform 0.1s;
+    }
+    .cell:hover { background: #1a4a7a; }
+    .cell:active { transform: scale(0.98); }
+    .cell.marked {
+      background: #e94560;
+      color: #fff;
+      text-decoration: line-through;
+    }
+    .cell.marked:hover { background: #c73e54; }
+  </style>
+</head>
+<body>
+  <h1>BINGO</h1>
+  <p class="load-hint">
+    Edit <code>squares.txt</code> (one line per square, 25 lines). 
+    <button type="button" id="loadFile">Load from file</button>
+    <input type="file" id="fileInput" accept=".txt" hidden>
+  </p>
+  <div class="board">
+    <div class="board-header">
+      <div class="cell">B</div>
+      <div class="cell">I</div>
+      <div class="cell">N</div>
+      <div class="cell">G</div>
+      <div class="cell">O</div>
+    </div>
+    <div class="board-grid" id="squares"></div>
+  </div>
+
+  <script>
+    const defaultSquares = [
+      'Square 1', 'Square 2', 'Square 3', 'Square 4', 'Square 5',
+      'Square 6', 'Square 7', 'Square 8', 'Square 9', 'Square 10',
+      'Square 11', 'Square 12', 'FREE', 'Square 14', 'Square 15',
+      'Square 16', 'Square 17', 'Square 18', 'Square 19', 'Square 20',
+      'Square 21', 'Square 22', 'Square 23', 'Square 24', 'Square 25'
+    ];
+
+    let labels = [...defaultSquares];
+
+    function parseTxt(text) {
+      const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if (lines.length >= 25) return lines.slice(0, 25);
+      const out = [...defaultSquares];
+      lines.forEach((line, i) => { if (i < 25) out[i] = line; });
+      return out;
+    }
+
+    function render() {
+      const el = document.getElementById('squares');
+      el.innerHTML = '';
+      labels.forEach((label, i) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.textContent = label;
+        cell.dataset.index = i;
+        cell.addEventListener('click', () => {
+          cell.classList.toggle('marked');
+        });
+        el.appendChild(cell);
+      });
+    }
+
+    document.getElementById('loadFile').onclick = () => document.getElementById('fileInput').click();
+    document.getElementById('fileInput').onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = () => {
+        labels = parseTxt(r.result);
+        render();
+      };
+      r.readAsText(file);
+      e.target.value = '';
+    };
+
+    fetch('squares.txt')
+      .then(r => r.ok ? r.text() : Promise.reject())
+      .then(text => { labels = parseTxt(text); })
+      .catch(() => {})
+      .finally(render);
+  </script>
+</body>
+</html>
