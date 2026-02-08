@@ -122,6 +122,7 @@
     <button type="button" id="loadFile">Load from file</button>
     <button type="button" id="downloadFile">Download .txt</button>
     <button type="button" id="shuffleBtn" class="btn-shuffle">Shuffle</button>
+    <button type="button" id="simpleModeBtn">Simple mode</button>
     <input type="file" id="fileInput" accept=".txt" hidden>
   </p>
   <div class="board">
@@ -144,10 +145,25 @@
       'Square 21', 'Square 22', 'Square 23', 'Square 24', 'Square 25'
     ];
 
+    const STORAGE_KEY = 'bingoState';
     const CENTER_INDEX = 12;
 
     let labels = [...defaultSquares];
     let displayLabels = [];
+    let markedIndices = [];
+    let simpleMode = false;
+
+    function getDisplayText(label) {
+      if (!simpleMode) return label;
+      const dash = label.indexOf(' - ');
+      if (dash !== -1) return label.slice(0, dash).trim();
+      return label;
+    }
+
+    function updateSimpleModeBtn() {
+      const btn = document.getElementById('simpleModeBtn');
+      if (btn) btn.textContent = simpleMode ? 'Simple mode: ON' : 'Simple mode';
+    }
 
     function parseTxt(text) {
       const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
@@ -176,6 +192,37 @@
       ];
     }
 
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          labels,
+          displayLabels,
+          markedIndices,
+          simpleMode
+        }));
+      } catch (e) {}
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data.displayLabels) || data.displayLabels.length !== 25) return null;
+        if (!Array.isArray(data.markedIndices)) return null;
+        const marked = data.markedIndices.filter(n => typeof n === 'number' && n >= 0 && n < 25 && n !== CENTER_INDEX);
+        const loadedLabels = Array.isArray(data.labels) && data.labels.length === 25 ? data.labels : null;
+        return {
+          labels: loadedLabels,
+          displayLabels: data.displayLabels,
+          markedIndices: marked,
+          simpleMode: data.simpleMode === true
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+
     function shuffleBoard() {
       const other = [
         ...displayLabels.slice(0, CENTER_INDEX),
@@ -187,7 +234,9 @@
         'FREE',
         ...shuffled.slice(CENTER_INDEX)
       ];
+      markedIndices = [];
       render();
+      saveState();
     }
 
     function shrinkText(cell) {
@@ -212,18 +261,27 @@
     function render() {
       const el = document.getElementById('squares');
       el.innerHTML = '';
+      const markedSet = new Set(markedIndices);
       displayLabels.forEach((label, i) => {
         const cell = document.createElement('div');
         cell.className = 'cell';
+        if (markedSet.has(i)) cell.classList.add('marked');
         const textSpan = document.createElement('span');
         textSpan.className = 'cell-text';
-        textSpan.textContent = label;
+        textSpan.textContent = getDisplayText(label);
         cell.appendChild(textSpan);
         cell.dataset.index = i;
         if (i === CENTER_INDEX) cell.classList.add('free');
         cell.addEventListener('click', () => {
           if (i === CENTER_INDEX) return;
           cell.classList.toggle('marked');
+          const idx = i;
+          if (markedIndices.includes(idx)) {
+            markedIndices = markedIndices.filter(n => n !== idx);
+          } else {
+            markedIndices = [...markedIndices, idx];
+          }
+          saveState();
         });
         el.appendChild(cell);
         shrinkText(cell);
@@ -238,7 +296,9 @@
       r.onload = () => {
         labels = parseTxt(r.result);
         buildDisplayLabels();
+        markedIndices = [];
         render();
+        saveState();
       };
       r.readAsText(file);
       e.target.value = '';
@@ -257,13 +317,31 @@
       URL.revokeObjectURL(url);
     };
 
+    document.getElementById('simpleModeBtn').onclick = () => {
+      simpleMode = !simpleMode;
+      updateSimpleModeBtn();
+      render();
+      saveState();
+    };
+
     fetch('squares.txt')
       .then(r => r.ok ? r.text() : Promise.reject())
       .then(text => { labels = parseTxt(text); })
       .catch(() => {})
       .finally(() => {
-        buildDisplayLabels();
+        const saved = loadState();
+        if (saved) {
+          if (saved.labels) labels = saved.labels;
+          displayLabels = saved.displayLabels;
+          markedIndices = saved.markedIndices;
+          if (saved.simpleMode) simpleMode = true;
+        } else {
+          buildDisplayLabels();
+          markedIndices = [];
+        }
         render();
+        updateSimpleModeBtn();
+        saveState();
       });
   </script>
 </body>
