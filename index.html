@@ -41,8 +41,7 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      max-width: 420px;
-      width: 100%;
+      width: fit-content;
     }
     .board-header {
       display: grid;
@@ -51,30 +50,47 @@
     }
     .board-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      grid-template-rows: repeat(5, 1fr);
+      grid-template-columns: repeat(5, 80px);
+      grid-template-rows: repeat(5, 80px);
       gap: 4px;
-      aspect-ratio: 1;
+    }
+    .board-header {
+      width: fit-content;
     }
     .board-header .cell {
+      width: 80px;
+      height: 80px;
       font-weight: bold;
       font-size: 1.5rem;
       background: #16213e;
       padding: 0.5rem;
     }
     .cell {
-      aspect-ratio: 1;
+      width: 80px;
+      height: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 8px;
+      padding: 6px;
       background: #0f3460;
       border: 2px solid #e94560;
       border-radius: 8px;
       cursor: pointer;
-      font-size: clamp(0.7rem, 2.2vw, 0.9rem);
+      font-size: 11px;
+      line-height: 1.2;
+      overflow: hidden;
       transition: background 0.15s, transform 0.1s;
+    }
+    .cell .cell-text {
+      width: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      line-clamp: 4;
+      word-break: break-word;
     }
     .cell:hover { background: #1a4a7a; }
     .cell:active { transform: scale(0.98); }
@@ -123,18 +139,41 @@
       return out;
     }
 
+    function shrinkText(cell) {
+      const wrap = cell.querySelector('.cell-text');
+      if (!wrap) return;
+      let size = 11;
+      cell.style.fontSize = size + 'px';
+      wrap.style.webkitLineClamp = '4';
+      while (size > 7 && wrap.scrollHeight > wrap.clientHeight) {
+        size -= 1;
+        cell.style.fontSize = size + 'px';
+      }
+      if (wrap.scrollHeight > wrap.clientHeight) {
+        wrap.style.webkitLineClamp = '3';
+        while (size > 6 && wrap.scrollHeight > wrap.clientHeight) {
+          size -= 1;
+          cell.style.fontSize = size + 'px';
+        }
+      }
+    }
+
     function render() {
       const el = document.getElementById('squares');
       el.innerHTML = '';
       labels.forEach((label, i) => {
         const cell = document.createElement('div');
         cell.className = 'cell';
-        cell.textContent = label;
+        const textSpan = document.createElement('span');
+        textSpan.className = 'cell-text';
+        textSpan.textContent = label;
+        cell.appendChild(textSpan);
         cell.dataset.index = i;
         cell.addEventListener('click', () => {
           cell.classList.toggle('marked');
         });
         el.appendChild(cell);
+        shrinkText(cell);
       });
     }
 
